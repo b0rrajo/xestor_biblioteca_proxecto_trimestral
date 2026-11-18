@@ -139,6 +139,7 @@ public class App {
 	}
 
 	
+	
 	/* XESTIÓN DE PRÉSTAMOS E DEVOLUCIÓNS
 	 * 1. novoPrestamoDevolucion: Permite facer novos péstamos e devolucións en función da operación desexada.
 	 * 2. rexistroPrestamoDevolucion: Imprime un desglose diario na pantalla da información rexistrada no primeiro método
