@@ -1,11 +1,11 @@
 package com.acarballeira.jdbc_sqlite.xestorBiblioteca;
 
-
+import java.io.BufferedWriter;
+import java.io.FileWriter;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Scanner;
 import java.time.LocalDate;
@@ -25,53 +25,6 @@ public class App {
     		exit = menu(exit);
     	}
     }
-    
-	private static void database_check(Connection conexion) throws Exception {
-		/* Database Check
-		 * Función de seguridad que revisa si existen las tablas dentro de la base de datos.
-		 * Caso de existir, no realiza nada.
-		 * Caso de NO existir, construye las tablas.
-		 */
-		Statement sentencia = conexion.createStatement();
-		try {
-			String sqlCatalogo="""
-					CREATE TABLE IF NOT EXISTS Catalogo(
-					codObra TEXT PRIMARY KEY,
-					tituloObra TEXT NOT NULL,
-					autorObra TEXT NOT NULL,
-					editorialObra TEXT NOT NULL,
-					anoObra INTEGER NOT NULL
-					disponibleObra INTEGER NOT NULL DEFAULT 1
-					)
-					""";
-			sentencia.execute(sqlCatalogo);
-			String sqlLectores="""
-					CREATE TABLE IF NOT EXISTS Lectores(
-					codLector TEXT PRIMARY KEY,
-					dniLector TEXT NOT NULL,
-					nombreLector TEXT NOT NULL,
-					apellidosLector TEXT NOT NULL,
-					edadLector INTEGER NOT NULL
-					)
-					""";
-			sentencia.execute(sqlLectores);
-			String sqlPrestamoDevolucion="""
-					CREATE TABLE IF NOT EXISTS PrestamoDevolucion(
-					codOperacion INTEGER PRIMARY KEY AUTOINCREMENT,
-					codLector TEXT NOT NULL,
-					codObra TEXT NOT NULL,
-					fechaPrestamo TEXT NOT NULL,
-					fechaDevolucion TEXT NOT NULL,
-					FOREIGN KEY (codLector) REFERENCES Lectores(codLector),
-					FOREIGN KEY (codObra) REFERENCES Catalogo(codObra)
-					)
-					""";
-			sentencia.execute(sqlPrestamoDevolucion);
-		}catch(Exception e) {
-			System.out.println("error!: " + e.getMessage());
-		}
-		
-	}
 
 	private static boolean menu(boolean exit) throws Exception {
 		System.out.println("=== XsTOR = XESTOR DE BIBLIOTECAS ===\r\n"
@@ -138,8 +91,6 @@ public class App {
 		}
 		return exit;
 	}
-
-	
 	
 	/* XESTIÓN DE PRÉSTAMOS E DEVOLUCIÓNS
 	 * 1. novoPrestamoDevolucion: Permite facer novos péstamos e devolucións en función da operación desexada.
@@ -147,11 +98,27 @@ public class App {
 	 * 3. exportarRexistroPrestamoDevolucion: Permite exportar en TXT o desglose diario
 	 */
 	
-	private static void exportarRexistroPrestamoDevolucion() {
-		// TODO Auto-generated method stub
+	private static void exportarRexistroPrestamoDevolucion() throws Exception {
+		Statement registro = conexion.createStatement();
+		ResultSet resultado = registro.executeQuery("SELECT * FROM PrestamoDevolucion ORDER BY codOperacion");
+		LocalDate today = LocalDate.now();
+		try(BufferedWriter escritor = new BufferedWriter(new FileWriter("rexistros_" + today + ".txt"))){
+			escritor.write("==================== REXISTRO DE PRÉSTAMOS E DEVOLUCIÓNS ====================\n"
+						 + "DATA - " + today + "\n"
+						 + "=============================================================================\n");
+			escritor.write(String.format("%-5s %-5s %-5s %-7s %-7s","Rexistro","Código Lector", "Código Libro", "Data de Préstamo", "Data de Devolución"));
+			
+			while(resultado.next()) {
+				int codOperacion=resultado.getInt("codOperacion");
+				String codLector=resultado.getString("codLector"), codObra=resultado.getString("codObra"), fechaPrestamo=resultado.getString("fechaPrestamo"), fechaDevolucion=resultado.getString("fechaDevolucion");
+				escritor.write(String.format("%-5s %-5s %-5s %-7s %-7s", codOperacion, codLector, codObra, fechaPrestamo, fechaDevolucion));
+			}
+			
+		}catch(Exception e) {
+			System.out.println("error!: " + e.getMessage());
+		}
 		
 	}
-
 	private static void rexistroPrestamoDevolucion() throws Exception {
 		Statement buscar = conexion.createStatement();
 		ResultSet resultado = buscar.executeQuery("SELECT * FROM PrestamoDevolucion ORDER BY codOperacion");
@@ -168,7 +135,6 @@ public class App {
 
 		
 	}
-
 	private static void novoPrestamoDevolucion() throws Exception {
 		String opcion, codLector, codObra;
 		LocalDate today = LocalDate.now();
@@ -237,6 +203,12 @@ public class App {
 		}
 	}
 	
+	/* MÉTODOS DE SEGURIDADE
+	 * 1. disponibleLibro: Revisa se un libro está dispoñible para emprésito
+	 * 2. existeLibro: Comproba que o libro existe e está rexistrado na táboa de catálogo
+	 * 3. existeLector: Comproba que o lector existe e está rexistrado na táboa de lectores
+	 * 4. integridad: Revisa que as táboas das bases de datos están ben construídas
+	 */
 	
 	private static boolean disponibleLibro(String codObra) throws Exception{
 		String comprobar = """
@@ -254,7 +226,6 @@ public class App {
 		}
 		return status;
 	}
-	
 	private static boolean existeLibro(String codObra) throws Exception {
 		String comprobar = """
 				SELECT 1 FROM Lectores WHERE codLector = ? LIMIT 1
@@ -264,7 +235,6 @@ public class App {
 		ResultSet rs = codigo.executeQuery();
 		return rs.next();
 	}
-
 	private static boolean existeLector(String codLector) throws Exception {
 		String comprobar = """
 				SELECT 1 FROM Lectores WHERE codLector = ? LIMIT 1
@@ -273,6 +243,52 @@ public class App {
 		codigo.setString(1, codLector);
 		ResultSet rs = codigo.executeQuery();
 		return rs.next();
+		
+	}
+	private static void database_check(Connection conexion) throws Exception {
+		/* Database Check
+		 * Función de seguridad que revisa si existen las tablas dentro de la base de datos.
+		 * Caso de existir, no realiza nada.
+		 * Caso de NO existir, construye las tablas.
+		 */
+		Statement sentencia = conexion.createStatement();
+		try {
+			String sqlCatalogo="""
+					CREATE TABLE IF NOT EXISTS Catalogo(
+					codObra TEXT PRIMARY KEY,
+					tituloObra TEXT NOT NULL,
+					autorObra TEXT NOT NULL,
+					editorialObra TEXT NOT NULL,
+					anoObra INTEGER NOT NULL
+					disponibleObra INTEGER NOT NULL DEFAULT 1
+					)
+					""";
+			sentencia.execute(sqlCatalogo);
+			String sqlLectores="""
+					CREATE TABLE IF NOT EXISTS Lectores(
+					codLector TEXT PRIMARY KEY,
+					dniLector TEXT NOT NULL,
+					nombreLector TEXT NOT NULL,
+					apellidosLector TEXT NOT NULL,
+					edadLector INTEGER NOT NULL
+					)
+					""";
+			sentencia.execute(sqlLectores);
+			String sqlPrestamoDevolucion="""
+					CREATE TABLE IF NOT EXISTS PrestamoDevolucion(
+					codOperacion INTEGER PRIMARY KEY AUTOINCREMENT,
+					codLector TEXT NOT NULL,
+					codObra TEXT NOT NULL,
+					fechaPrestamo TEXT NOT NULL,
+					fechaDevolucion TEXT NOT NULL,
+					FOREIGN KEY (codLector) REFERENCES Lectores(codLector),
+					FOREIGN KEY (codObra) REFERENCES Catalogo(codObra)
+					)
+					""";
+			sentencia.execute(sqlPrestamoDevolucion);
+		}catch(Exception e) {
+			System.out.println("error!: " + e.getMessage());
+		}
 		
 	}
 }
