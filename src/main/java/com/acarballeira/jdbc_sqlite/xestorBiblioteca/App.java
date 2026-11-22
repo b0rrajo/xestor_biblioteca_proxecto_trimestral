@@ -9,6 +9,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.Scanner;
 import java.time.LocalDate;
+import com.acarballeira.jdbc_sqlite.xestorBiblioteca.exceptions.*;
 
 public class App {
 	
@@ -69,6 +70,17 @@ public class App {
 	       			+ "-----------------------------------\r\n");
 			System.out.print("PREMA NUNHA DAS SEGUINTES OPCIÓNS: ");
 			case2option=sc.nextInt();
+			switch(case2option) {
+				case 1:
+					novoCatalogacionDescatalogacion();
+					break;
+				case 2:
+					rexistroCatalogo();
+					break;
+				case 3:
+					importarExportarCatalogo();
+					break;
+			}
 			break;
 		case 3: 
 			int case3option;
@@ -91,7 +103,7 @@ public class App {
 		}
 		return exit;
 	}
-	
+
 	/* XESTIÓN DE PRÉSTAMOS E DEVOLUCIÓNS
 	 * 1. novoPrestamoDevolucion: Permite facer novos péstamos e devolucións en función da operación desexada.
 	 * 2. rexistroPrestamoDevolucion: Imprime un desglose diario na pantalla da información rexistrada no primeiro método
@@ -127,6 +139,7 @@ public class App {
 						+ "DATA - " + today + "\n"
 						+ "=============================================================================\n");
 		System.out.printf("%-5s %-5s %-5s %-7s %-7s", "Rexistro","Código Lector", "Código Libro", "Data de Préstamo", "Data de Devolución");
+		System.out.println();
 		while(resultado.next()) {
 			int codOperacion=resultado.getInt("codOperacion");
 			String codLector=resultado.getString("codLector"), codObra=resultado.getString("codObra"), fechaPrestamo=resultado.getString("fechaPrestamo"), fechaDevolucion=resultado.getString("fechaDevolucion");
@@ -136,6 +149,7 @@ public class App {
 		
 	}
 	private static void novoPrestamoDevolucion() throws Exception {
+		sc.nextLine();
 		String opcion, codLector, codObra;
 		LocalDate today = LocalDate.now();
 		boolean existeLector, existeLibro, disponibleLibro;
@@ -150,8 +164,9 @@ public class App {
 					UPDATE Catalogo SET disponibleObra = 0 WHERE codObra = ?
 					""";
 			
-			System.out.print("=== NOVO PRÉSTAMO DE LIBRO ===");
-			System.out.print("Código de lector: "); codLector=sc.nextLine();
+			System.out.println("=== NOVO PRÉSTAMO DE LIBRO ===");
+			
+			System.out.print("Código de lector: ");codLector=sc.nextLine();
 			existeLector=existeLector(codLector);
 			if(existeLector==true) {
 				System.out.print("Código de obra: "); codObra=sc.nextLine();
@@ -203,6 +218,114 @@ public class App {
 		}
 	}
 	
+	/* XESTIÓN DE PRÉSTAMOS E DEVOLUCIÓNS
+	 * 1. novoPrestamoDevolucion: Permite facer novos péstamos e devolucións en función da operación desexada.
+	 * 2. rexistroPrestamoDevolucion: Imprime un desglose diario na pantalla da información rexistrada no primeiro método
+	 * 3. exportarRexistroPrestamoDevolucion: Permite exportar en TXT o desglose diario
+	 */
+	
+	private static void importarExportarCatalogo() {
+		
+		
+	}
+
+	private static void rexistroCatalogo() {
+		// TODO Apéndice de método generado automáticamente
+		
+	}
+
+	private static void novoCatalogacionDescatalogacion() throws Exception{
+		String codObra, tituloObra, autorObra, editorialObra, opcion;
+		int anoObra, disponibleObra;
+		LocalDate today = LocalDate.now();
+		
+		boolean existeLector, existeLibro, disponibleLibro;
+		System.out.print("Catalogar ou Descatalogar: "); opcion=sc.nextLine();
+		switch(opcion) {
+		
+		//CATALOGACIÓN
+		case "Catalogar":
+			String novaCatalogacion="""
+			INSERT INTO Catalogo (codObra, tituloObra, autorObra, editorialObra, anoObra) Values (?, ?, ?, ?, ?)
+			""";
+			System.out.print("=== NOVA CATALOGACIÓN ===");
+			System.out.print("Código de Obra: "); codObra=sc.nextLine();
+			existeLibro=existeLibro(codObra);
+			if(existeLibro==false) {
+				System.out.print("Título: "); tituloObra=sc.nextLine();
+				System.out.print("Autor: "); autorObra=sc.nextLine();
+				System.out.print("Editorial: "); editorialObra=sc.nextLine();
+				System.out.print("Ano de publicacion: "); anoObra=sc.nextInt();
+				try(PreparedStatement insertar = conexion.prepareStatement(novaCatalogacion)){
+					insertar.setString(1, codObra);
+					insertar.setString(2, tituloObra);
+					insertar.setString(3, autorObra);
+					insertar.setString(4, editorialObra);
+					insertar.setInt(5, anoObra);
+					insertar.executeUpdate();
+				}
+				try{
+					existeLibro=existeLibro(codObra);
+					if(existeLibro==false){
+						throw new NotRegisteredException("error inesperado: Non se rexistrou o libro na táboa");
+					}else {
+						System.out.println("Rexistado con éxito!");
+					}
+				}catch(Exception e){
+					conexion.rollback();
+					System.out.println("error na táboa!: " + e.getMessage());
+				}
+			}else {
+				System.out.println("Existe unha obra con este código");
+			}
+			break;
+		//DESCATALOGACIÓN	
+		case "Descatalogar":
+			String disponible;
+			String novaDescatalogacion="""
+			DELETE * FROM Catalogo WHERE codObra = ? 
+			""";
+			String comprobar="""
+					SELECT 1 FROM Lectores WHERE codObra = ? LIMIT 1
+					""";
+			
+			System.out.print("=== NOVA DESCATALOGACIÓN ===");
+			System.out.print("Código de obra: "); codObra=sc.nextLine();
+			try(PreparedStatement seguro = conexion.prepareStatement(comprobar)){
+				System.out.println("Atopáronse os seguintes documentos: ");
+				System.out.printf("%-5s %-5s %-5s %-7s %-7s %-7s","Código Libro", "Título", "Autor", "Editorial", "Ano", "Dispoñible");
+				System.out.println("=============================================================================");
+				while(((ResultSet) seguro).next()) {
+					codObra=((ResultSet) seguro).getString("codObra");
+					tituloObra=((ResultSet) seguro).getString("codObra");
+					autorObra=((ResultSet) seguro).getString("fechaPrestamo");
+					editorialObra=((ResultSet) seguro).getString("fechaDevolucion");
+					anoObra=((ResultSet) seguro).getInt("fechaDevolucion");
+					disponibleObra=((ResultSet) seguro).getInt("fechaDevolucion");
+					if(disponibleObra==1) {
+						disponible="SÍ";
+					}else {
+						disponible="NO";
+					}
+					System.out.printf("%-5s %-5s %-5s %-7s %-7s", codObra, tituloObra, autorObra, editorialObra, anoObra, disponible);
+				}
+				boolean descatalogable=disponibleLibro(codObra);
+				if(descatalogable=true) {
+					PreparedStatement borrar = conexion.prepareStatement(novaDescatalogacion);
+					codObra=((ResultSet) borrar).getString("codObra");
+					borrar.executeUpdate();
+				}else {
+					throw new UndestroyException("error!: Non se pode eliminar, actualmente en préstamo");
+				}
+			}catch(Exception e){
+				conexion.rollback();
+				System.out.println("error na táboa!: " + e.getMessage());
+			}
+			break;
+		}
+	}
+		
+	
 	/* MÉTODOS DE SEGURIDADE
 	 * 1. disponibleLibro: Revisa se un libro está dispoñible para emprésito
 	 * 2. existeLibro: Comproba que o libro existe e está rexistrado na táboa de catálogo
@@ -228,7 +351,7 @@ public class App {
 	}
 	private static boolean existeLibro(String codObra) throws Exception {
 		String comprobar = """
-				SELECT 1 FROM Lectores WHERE codLector = ? LIMIT 1
+				SELECT 1 FROM Lectores WHERE codObra = ? LIMIT 1
 				""";
 		PreparedStatement codigo = conexion.prepareStatement(comprobar);
 		codigo.setString(1, codObra);
@@ -246,11 +369,6 @@ public class App {
 		
 	}
 	private static void database_check(Connection conexion) throws Exception {
-		/* Database Check
-		 * Función de seguridad que revisa si existen las tablas dentro de la base de datos.
-		 * Caso de existir, no realiza nada.
-		 * Caso de NO existir, construye las tablas.
-		 */
 		Statement sentencia = conexion.createStatement();
 		try {
 			String sqlCatalogo="""
@@ -259,7 +377,7 @@ public class App {
 					tituloObra TEXT NOT NULL,
 					autorObra TEXT NOT NULL,
 					editorialObra TEXT NOT NULL,
-					anoObra INTEGER NOT NULL
+					anoObra INTEGER NOT NULL,
 					disponibleObra INTEGER NOT NULL DEFAULT 1
 					)
 					""";
@@ -276,7 +394,7 @@ public class App {
 			sentencia.execute(sqlLectores);
 			String sqlPrestamoDevolucion="""
 					CREATE TABLE IF NOT EXISTS PrestamoDevolucion(
-					codOperacion INTEGER PRIMARY KEY AUTOINCREMENT,
+					codOperacion INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
 					codLector TEXT NOT NULL,
 					codObra TEXT NOT NULL,
 					fechaPrestamo TEXT NOT NULL,
