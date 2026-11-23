@@ -3,16 +3,22 @@ package com.acarballeira.jdbc_sqlite.xestorBiblioteca;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 import java.time.LocalDate;
 import com.google.gson.*;
@@ -34,7 +40,9 @@ public class App {
 	static Scanner sc = new Scanner(System.in);
 	static String url = "jdbc:sqlite:xestorBibliotecas.db";
 	static Connection conexion;
-
+	static LocalDate today = LocalDate.now();
+	static String ruta = "copia_seguridad_" + today;
+	
 	public static void main(String[] args) throws Exception {
 		boolean exit = false;
 		conexion = DriverManager.getConnection(url);
@@ -163,7 +171,7 @@ public class App {
 		try (BufferedWriter escritor = new BufferedWriter(new FileWriter("rexistros_" + today + ".txt"))) {
 			escritor.write("==================== REXISTRO DE PRÉSTAMOS E DEVOLUCIÓNS ====================\n" + "DATA - "
 					+ today + "\n" + "=============================================================================\n");
-			escritor.write(String.format("%-5s %-5s %-5s %-7s %-7s", "Rexistro", "Código Lector", "Código Libro",
+			escritor.write(String.format("%-14s %-32s %-25s %-7s %-7s", "Rexistro", "Código Lector", "Código Libro",
 					"Data de Préstamo", "Data de Devolución"));
 			escritor.newLine();
 
@@ -172,7 +180,7 @@ public class App {
 				String codLector = resultado.getString("codLector"), codObra = resultado.getString("codObra"),
 						fechaPrestamo = resultado.getString("fechaPrestamo"),
 						fechaDevolucion = resultado.getString("fechaDevolucion");
-				escritor.write(String.format("%-5s %-5s %-5s %-7s %-7s", codOperacion, codLector, codObra,
+				escritor.write(String.format("%-14s %-32s %-25s %-7s %-7s", codOperacion, codLector, codObra,
 						fechaPrestamo, fechaDevolucion));
 				escritor.newLine();
 			}
@@ -191,7 +199,7 @@ public class App {
 		LocalDate today = LocalDate.now();
 		System.out.printf("==================== REXISTRO DE PRÉSTAMOS E DEVOLUCIÓNS ====================\n" + "DATA - "
 				+ today + "\n" + "=============================================================================\n");
-		System.out.printf("%-5s %-5s %-5s %-7s %-7s", "Rexistro", "Código Lector", "Código Libro", "Data de Préstamo",
+		System.out.printf("%-14s %-32s %-25s %-7s %-7s", "Rexistro", "Código Lector", "Código Libro", "Data de Préstamo",
 				"Data de Devolución");
 		System.out.println();
 		while (resultado.next()) {
@@ -199,7 +207,7 @@ public class App {
 			String codLector = resultado.getString("codLector"), codObra = resultado.getString("codObra"),
 					fechaPrestamo = resultado.getString("fechaPrestamo"),
 					fechaDevolucion = resultado.getString("fechaDevolucion");
-			System.out.printf("%-5s %-5s %-5s %-7s %-7s", codOperacion, codLector, codObra, fechaPrestamo,
+			System.out.printf("%-14s %-32s %-25s %-7s %-7s", codOperacion, codLector, codObra, fechaPrestamo,
 					fechaDevolucion);
 			System.out.println();
 		}
@@ -437,7 +445,7 @@ public class App {
 		LocalDate today = LocalDate.now();
 		System.out.printf("========================== CATÁLOGO BIBLIOTECARIO ==========================\n" + "DATA - "
 				+ today + "\n" + "============================================================================\n");
-		System.out.printf("%-5s %-5s %-5s %-7s %-7s %-7s", "Código Libro", "Título", "Autor", "Editorial", "Ano",
+		System.out.printf("%-14s %-32s %-25s %-20s %-6s %-10s", "Código Libro", "Título", "Autor", "Editorial", "Ano",
 				"Dispoñible");
 		System.out.println();
 		while (resultado.next()) {
@@ -449,9 +457,11 @@ public class App {
 			} else {
 				disponible = "NO";
 			}
-			System.out.printf("%-5s %-5s %-5s %-7s %-7s %-7s", codObra, tituloObra, autorObra, editorialObra, anoObra,
+			System.out.printf("%-14s %-32s %-25s %-20s %-6s %-10s", codObra, tituloObra, autorObra, editorialObra, anoObra,
 					disponible);
+			System.out.println();
 		}
+		System.out.println();
 	}
 	/**Permite dar de alta novas obras e dalas de baixa
 	 * @throws Exception Error xenérico
@@ -523,7 +533,7 @@ public class App {
 			try (PreparedStatement seguro = conexion.prepareStatement(comprobar)) {
 				seguro.setString(1, codObra);
 				System.out.println("Atopáronse os seguintes documentos: ");
-				System.out.printf("%-13s %-20s %-18s %-15s %-6s %-10s%n", "Código Libro", "Título", "Autor",
+				System.out.printf("%-13s %-20s %-18s %-15s %-6s %-10s", "Código Libro", "Título", "Autor",
 						"Editorial", "Ano", "Dispoñible");
 				System.out.println("=====================================================================================");
 				ResultSet rs = seguro.executeQuery();
@@ -539,7 +549,7 @@ public class App {
 					} else {
 						disponible = "NO";
 					}
-					System.out.printf("%-13s %-20s %-18s %-15s %-6d %-10s%n", codObra, tituloObra, autorObra,
+					System.out.printf("%-13s %-20s %-18s %-15s %-6d %-10s", codObra, tituloObra, autorObra,
 							editorialObra, anoObra, disponible);
 				}
 
@@ -693,18 +703,18 @@ public class App {
 	 */
 	private static void rexistroLectores() throws Exception {
 		Statement buscar = conexion.createStatement();
-		ResultSet resultado = buscar.executeQuery("SELECT * FROM Lectores ORDER BY codObra");
+		ResultSet resultado = buscar.executeQuery("SELECT * FROM Lectores ORDER BY codLector");
 		LocalDate today = LocalDate.now();
 		System.out.printf("========================== LISTADO DE LECTORES ==========================\n" + "DATA - "
 				+ today + "\n" + "============================================================================\n");
-		System.out.printf("%-5s %-5s %-5s %-7s %-7s", "Código Lector", "DNI", "Nome", "Apelidos",
+		System.out.printf("%-14s %-14s %-10s %-20s %-7s", "Código Lector", "DNI", "Nome", "Apelidos",
 				"Idade");
 		System.out.println();
 		while (resultado.next()) {
 			String codLector = resultado.getString("codLector"), dniLector = resultado.getString("dniLector"),
 					nombreLector = resultado.getString("nombreLector"), apellidosLector = resultado.getString("apellidosLector");
 			int edadLector = resultado.getInt("edadLector");
-			System.out.printf("%-5s %-5s %-5s %-7s %-7s", codLector, dniLector, nombreLector, apellidosLector, edadLector);
+			System.out.printf("%-14s %-14s %-10s %-20s %-7s", codLector, dniLector, nombreLector, apellidosLector, edadLector);
 		}
 	}
 	/**Permite dar de alta novos usuarios e dalos de baixa
@@ -775,7 +785,7 @@ public class App {
 			try (PreparedStatement seguro = conexion.prepareStatement(comprobar)) {
 				seguro.setString(1, codLector);
 				System.out.println("Atopáronse os seguintes datos: ");
-				System.out.printf("%-14s %-12s %-15s %-20s %-6s%n", "Código Lector", "DNI", "Nome", "Apelidos",
+				System.out.printf("%-14s %-14s %-10s %-20s %-7s", "Código Lector", "DNI", "Nome", "Apelidos",
 						"Idade");
 				System.out.println("=============================================================================");
 				ResultSet rs = seguro.executeQuery();
@@ -785,7 +795,7 @@ public class App {
 					nombreLector = rs.getString("nombreLector");
 					apellidosLector = rs.getString("apellidosLector");
 					edadLector = rs.getInt("edadLector");
-					System.out.printf("%-14s %-12s %-15s %-20s %-6d%n", codLector, dniLector, nombreLector,
+					System.out.printf("%-14s %-14s %-10s %-20s %-7s", codLector, dniLector, nombreLector,
 							apellidosLector, edadLector);
 				}
 
@@ -820,11 +830,147 @@ public class App {
 	 * 
 	 */
 	private static void restaurarConCopia() {
+		File archivo = new File(ruta);
+        if (!archivo.exists()) {
+            System.err.println("Non existe o ficheiro de copia de seguridade: " + ruta);
+            return;
+        }
+
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(archivo))) {
+            // 1. Leer las 3 listas en el MISMO orden en el que se guardaron
+            List<Object[]> catalogo = (List<Object[]>) ois.readObject();
+            List<Object[]> lectores = (List<Object[]>) ois.readObject();
+            List<Object[]> prestamos = (List<Object[]>) ois.readObject();
+
+            // Desactivar autoCommit para hacer una transacción segura
+            conexion.setAutoCommit(false);
+
+            try (Statement st = conexion.createStatement()) {
+                // 2. Vaciar tablas actuales respetando las claves foráneas (primero la tabla hija)
+                st.executeUpdate("DELETE FROM PrestamoDevolucion");
+                st.executeUpdate("DELETE FROM Catalogo");
+                st.executeUpdate("DELETE FROM Lectores");
+            }
+
+            // 3. Insertar datos en Catalogo (tabla padre)
+            String sqlCatalogo = "INSERT INTO Catalogo (codObra, tituloObra, autorObra, editorialObra, anoObra, disponibleObra) VALUES (?, ?, ?, ?, ?, ?)";
+            try (PreparedStatement ps = conexion.prepareStatement(sqlCatalogo)) {
+                for (Object[] fila : catalogo) {
+                    ps.setString(1, (String) fila[0]);
+                    ps.setString(2, (String) fila[1]);
+                    ps.setString(3, (String) fila[2]);
+                    ps.setString(4, (String) fila[3]);
+                    ps.setInt(5, (Integer) fila[4]);
+                    ps.setInt(6, (Integer) fila[5]);
+                    ps.executeUpdate();
+                }
+            }
+
+            // 4. Insertar datos en Lectores (tabla padre)
+            String sqlLectores = "INSERT INTO Lectores (codLector, dniLector, nombreLector, apellidosLector, edadLector) VALUES (?, ?, ?, ?, ?)";
+            try (PreparedStatement ps = conexion.prepareStatement(sqlLectores)) {
+                for (Object[] fila : lectores) {
+                    ps.setString(1, (String) fila[0]);
+                    ps.setString(2, (String) fila[1]);
+                    ps.setString(3, (String) fila[2]);
+                    ps.setString(4, (String) fila[3]);
+                    ps.setInt(5, (Integer) fila[4]);
+                    ps.executeUpdate();
+                }
+            }
+
+            // 5. Insertar datos en PrestamoDevolucion (tabla hija - debe ir al final por las FOREIGN KEY)
+            String sqlPrestamos = "INSERT INTO PrestamoDevolucion (codOperacion, codLector, codObra, fechaPrestamo, fechaDevolucion) VALUES (?, ?, ?, ?, ?)";
+            try (PreparedStatement ps = conexion.prepareStatement(sqlPrestamos)) {
+                for (Object[] fila : prestamos) {
+                    ps.setInt(1, (Integer) fila[0]);
+                    ps.setString(2, (String) fila[1]);
+                    ps.setString(3, (String) fila[2]);
+                    ps.setString(4, (String) fila[3]);
+                    ps.setString(5, (String) fila[4]);
+                    ps.executeUpdate();
+                }
+            }
+
+            conexion.commit();
+            System.out.println("Base de datos restaurada correctamente dende " + ruta);
+
+        } catch (SQLException | IOException | ClassNotFoundException e) {
+            try {
+                if (conexion != null) conexion.rollback(); // Deshacer cambios si falla algo
+            } catch (SQLException ex) {
+                ex.printStackTrace();
+            }
+            System.err.println("Erro ao restaurar a copia de seguridade: " + e.getMessage());
+        } finally {
+            try {
+                if (conexion != null) conexion.setAutoCommit(true);
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        }
 	}
 	/**Crea unha copia de seguridade en formato BIN
 	 * 
 	 */
 	private static void novoCopiaSeguridade() {
+		
+		List<Object[]> catalogo = new ArrayList<>();
+        List<Object[]> lectores = new ArrayList<>();
+        List<Object[]> prestamos = new ArrayList<>();
+
+        try (Statement st = conexion.createStatement()) {
+            // 1. Leer tabla Catalogo
+            try (ResultSet rs = st.executeQuery("SELECT codObra, tituloObra, autorObra, editorialObra, anoObra, disponibleObra FROM Catalogo")) {
+                while (rs.next()) {
+                    catalogo.add(new Object[]{
+                        rs.getString("codObra"),
+                        rs.getString("tituloObra"),
+                        rs.getString("autorObra"),
+                        rs.getString("editorialObra"),
+                        rs.getInt("anoObra"),
+                        rs.getInt("disponibleObra")
+                    });
+                }
+            }
+
+            // 2. Leer tabla Lectores
+            try (ResultSet rs = st.executeQuery("SELECT codLector, dniLector, nombreLector, apellidosLector, edadLector FROM Lectores")) {
+                while (rs.next()) {
+                    lectores.add(new Object[]{
+                        rs.getString("codLector"),
+                        rs.getString("dniLector"),
+                        rs.getString("nombreLector"),
+                        rs.getString("apellidosLector"),
+                        rs.getInt("edadLector")
+                    });
+                }
+            }
+
+            // 3. Leer tabla PrestamoDevolucion
+            try (ResultSet rs = st.executeQuery("SELECT codOperacion, codLector, codObra, fechaPrestamo, fechaDevolucion FROM PrestamoDevolucion")) {
+                while (rs.next()) {
+                    prestamos.add(new Object[]{
+                        rs.getInt("codOperacion"),
+                        rs.getString("codLector"),
+                        rs.getString("codObra"),
+                        rs.getString("fechaPrestamo"),
+                        rs.getString("fechaDevolucion")
+                    });
+                }
+            }
+
+            // 4. Escribir las 3 listas en el archivo .bin
+            try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(ruta))) {
+                oos.writeObject(catalogo);
+                oos.writeObject(lectores);
+                oos.writeObject(prestamos);
+                System.out.println("Copia de seguridade creada correctamente en " + ruta);
+            }
+
+        } catch (SQLException | IOException e) {
+            System.err.println("Erro ao crear a copia de seguridade: " + e.getMessage());
+        }
 	}
 	/**Revisa se un libro está dispoñible para emprésito
 	 * @param codObra
@@ -933,6 +1079,7 @@ public class App {
 					)
 					""";
 			sentencia.execute(sqlPrestamoDevolucion);
+			System.out.println("Revision feita con éxito");
 		} catch (Exception e) {
 			System.out.println("error!: " + e.getMessage());
 		}
