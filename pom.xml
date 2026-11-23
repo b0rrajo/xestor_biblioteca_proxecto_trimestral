@@ -4,8 +4,8 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.acarballeira.jdbc-sqlite</groupId>
-  <artifactId>xestorBiblioteca</artifactId>
+	<groupId>com.acarballeira.jdbc-sqlite</groupId>
+	<artifactId>xestorBiblioteca</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 
 	<name>jdbc-sqlite</name>
@@ -108,5 +108,28 @@
 				</plugin>
 			</plugins>
 		</pluginManagement>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>3.6.1</version>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<transformers>
+						<transformer
+							implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+							<mainClass>com.acarballeira.jdbc_sqlite.xestorBiblioteca.App</mainClass>
+						</transformer>
+					</transformers>
+				</configuration>
+			</plugin>
+		</plugins>
 	</build>
 </project>
