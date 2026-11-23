@@ -60,7 +60,7 @@ public class App {
 	 * @throws Exception En caso de xerarse erros nos outros métodos
 	 */
 	private static boolean menu(boolean exit) throws Exception {
-		System.out.println("=== XsTOR = XESTOR DE BIBLIOTECAS ===\r\n" + "-------------------------------------\r\n"
+		System.out.println("=== XKsTOR = XESTOR DE BIBLIOTECAS ===\r\n" + "-------------------------------------\r\n"
 				+ "1. Xestión de préstamos\r\n" + "2. Xestión de catálogo\r\n" + "3. Xestión de lectores\r\n"
 				+ "4. Gardar e sair\r\n" + "\r\n" + "0. Outras opcións do programa\r\n"
 				+ "-------------------------------------\r\n" + "PREMA NUNHA DAS SEGUINTES OPCIÓNS: ");
