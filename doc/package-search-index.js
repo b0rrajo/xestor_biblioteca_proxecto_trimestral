@@ -1,0 +1,1 @@
+packageSearchIndex = [{"l":"All Packages","u":"allpackages-index.html","k":"18"},{"l":"com.acarballeira.jdbc_sqlite.xestorBiblioteca"},{"l":"com.acarballeira.jdbc_sqlite.xestorBiblioteca.exceptions"}];updateSearchResults();

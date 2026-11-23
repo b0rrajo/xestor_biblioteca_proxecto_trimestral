@@ -18,6 +18,17 @@ import java.time.LocalDate;
 import com.google.gson.*;
 import com.acarballeira.jdbc_sqlite.xestorBiblioteca.exceptions.*;
 
+/** XsTOR - XESTOR DE LIBRARÍAS
+ * Aplicación básica de xestión de librarías que inclue:
+ * - Xestión de Catálogo
+ * - Xestión de Lectores
+ * - Xestión de Préstamos e Devolucións
+ * - Opcións varias de seguridade
+ * 
+ * @author Daniel Borrajo Fernández
+ * @version REV 1.0
+ */
+
 public class App {
 
 	static Scanner sc = new Scanner(System.in);
@@ -34,7 +45,12 @@ public class App {
 			exit = menu(exit);
 		}
 	}
-
+	
+	/** Método onde está desenvolvido todo o menú do aplicativo
+	 * @param exit Variable de saída e finalización do programa
+	 * @return Devolve finalización con éxito ao ser False a variable exit
+	 * @throws Exception En caso de xerarse erros nos outros métodos
+	 */
 	private static boolean menu(boolean exit) throws Exception {
 		System.out.println("=== XsTOR = XESTOR DE BIBLIOTECAS ===\r\n" + "-------------------------------------\r\n"
 				+ "1. Xestión de préstamos\r\n" + "2. Xestión de catálogo\r\n" + "3. Xestión de lectores\r\n"
@@ -132,11 +148,14 @@ public class App {
 
 
 	/* XESTIÓN DE PRÉSTAMOS E DEVOLUCIÓNS 
-	 * 1. novoPrestamoDevolucion: Permite facer novos péstamos e devolucións en función da operación desexada.
-	 * 2. rexistroPrestamoDevolucion: Imprime un desglose diario na pantalla da información rexistrada no primeiro método
-	 * 3. exportarRexistroPrestamoDevolucion: Permite exportar en TXT o desglose diario
+	 * novoPrestamoDevolucion: Permite facer novos péstamos e devolucións en función da operación desexada.
+	 * rexistroPrestamoDevolucion: Imprime un desglose diario na pantalla da información rexistrada no primeiro método
+	 * exportarRexistroPrestamoDevolucion: Permite exportar en TXT o desglose diario
 	 */
-
+	
+	/** Permite exportar en TXT o desglose diario.
+	 * @throws Exception
+	 */
 	private static void exportarRexistroPrestamoDevolucion() throws Exception {
 		Statement registro = conexion.createStatement();
 		ResultSet resultado = registro.executeQuery("SELECT * FROM PrestamoDevolucion ORDER BY codOperacion");
@@ -163,7 +182,9 @@ public class App {
 		}
 
 	}
-
+	/** Imprime un desglose diario na pantalla da información rexistrada no primeiro método.
+	 * @throws Exception
+	 */
 	private static void rexistroPrestamoDevolucion() throws Exception {
 		Statement buscar = conexion.createStatement();
 		ResultSet resultado = buscar.executeQuery("SELECT * FROM PrestamoDevolucion ORDER BY codOperacion");
@@ -184,7 +205,9 @@ public class App {
 		}
 
 	}
-
+	/** Permite facer novos péstamos e devolucións en función da operación desexada.
+	 * @throws Exception
+	 */
 	private static void novoPrestamoDevolucion() throws Exception {
 		sc.nextLine();
 		String opcion, codLector, codObra;
@@ -264,7 +287,20 @@ public class App {
 	 * 2. rexistroCatalogo: Imprime un desglose do catálogo na pantalla da información rexistrada no primeiro método
 	 * 3. importarExportarCatalogo: Permite a creacion de novos rexistros no catálogo de forma masiva e exportalos en formato CSV
 	 */
-
+	/** Permite a creacion de novos rexistros no catálogo de forma masiva e exportalos en formato CSV
+	 * IMPORTACIÓN:
+	 * 	1. Salta cabeceira do arquivo se o csv ten nomes de columnas na primeira liña
+	 *  2. Valida o número de columnas
+	 *  3. Valida o campos vacíos e espazos
+	 *  4. De habelos, limpa os espazos e parsea elementos Integer a String
+	 *  5. Inserta na db e controla con Primary Key
+	 * EXPORTACIÓN:
+	 * 	1. Escribe cabeceira
+	 *  2. Escribe datos con split ";"
+	 *  3. Graba arquivo coa extensión CSV
+	 * @throws IOException
+	 * @throws SQLException
+	 */
 	private static void importarExportarCatalogo() {
 		sc.nextLine();
 		String opcion, archivo = "exportCatalogo.csv";
@@ -284,8 +320,6 @@ public class App {
 
 				String linea;
 				while ((linea = br.readLine()) != null) {
-					// 1. Opcional: Saltar cabecera si el CSV tiene nombres de columnas en la
-					// primera línea
 					if (primeraLinea) {
 						primeraLinea = false;
 						if (linea.toLowerCase().startsWith("codobra;")) {
@@ -293,7 +327,6 @@ public class App {
 						}
 					}
 
-					// 2. Validar número de columnas (-1 mantiene campos vacíos al final)
 					String[] datos = linea.split(";", -1);
 					if (datos.length != 6) {
 						System.out.println("Línea incorrecta (número de columnas): " + linea);
@@ -301,7 +334,6 @@ public class App {
 						continue;
 					}
 
-					// 3. Validar campos vacíos o solo espacios
 					if (datos[0].isBlank() || datos[1].isBlank() || datos[2].isBlank() || datos[3].isBlank()
 							|| datos[4].isBlank() || datos[5].isBlank()) {
 						System.out.println("Faltan datos obligatorios: " + linea);
@@ -309,7 +341,6 @@ public class App {
 						continue;
 					}
 
-					// 4. Limpiar espacios y parsear enteros
 					String codObra = datos[0].trim();
 					String tituloObra = datos[1].trim();
 					String autorObra = datos[2].trim();
@@ -320,8 +351,6 @@ public class App {
 					try {
 						anoObra = Integer.parseInt(datos[4].trim());
 						disponibleObra = Integer.parseInt(datos[5].trim());
-
-						// Validación extra lógica: disponibleObra suele ser 0 o 1
 						if (disponibleObra != 0 && disponibleObra != 1) {
 							System.out.println("Valor de disponibilidad inválido (debe ser 0 o 1): " + linea);
 							rechazados++;
@@ -333,7 +362,6 @@ public class App {
 						continue;
 					}
 
-					// 5. Insertar en BD y controlar duplicados de Primary Key (codObra)
 					try {
 						pstmt.setString(1, codObra);
 						pstmt.setString(2, tituloObra);
@@ -346,8 +374,6 @@ public class App {
 						insertados++;
 
 					} catch (SQLException e) {
-						// En SQLite el código de error para UNIQUE/PRIMARY KEY constraint es 19
-						// También comprobamos el mensaje por compatibilidad
 						if (e.getErrorCode() == 19 || e.getMessage().toLowerCase().contains("unique")
 								|| e.getMessage().toLowerCase().contains("primary key")) {
 							System.out.println("Registro duplicado (codObra ya existe): " + codObra);
@@ -373,13 +399,10 @@ public class App {
 			try (Statement stmt = conexion.createStatement();
 					ResultSet rs = stmt.executeQuery(sqlSelect);
 					BufferedWriter bw = new BufferedWriter(new FileWriter(archivo))) {
-
-				// Ignorar cabeceira
 				bw.write("codObra;tituloObra;autorObra;editorialObra;anoObra;disponibleObra");
 				bw.newLine();
 
 				while (rs.next()) {
-					// split de ";"
 					String codObra = limpiarTexto(rs.getString("codObra"));
 					String tituloObra = limpiarTexto(rs.getString("tituloObra"));
 					String autorObra = limpiarTexto(rs.getString("autorObra"));
@@ -404,7 +427,9 @@ public class App {
 			break;
 		}
 	}
-
+	/** Imprime un desglose do catálogo na pantalla da información rexistrada no primeiro método.
+	 * @throws Exception
+	 */
 	private static void rexistroCatalogo() throws Exception {
 		String disponible;
 		Statement buscar = conexion.createStatement();
@@ -428,7 +453,11 @@ public class App {
 					disponible);
 		}
 	}
-
+	/**Permite dar de alta novas obras e dalas de baixa
+	 * @throws Exception Error xenérico
+	 * @throws NotRegisteredException Non existe o libro que se está á rexistrar
+	 * @throws UndestryException Non se pode eliminar porque existen relacións
+	 */
 	private static void novoCatalogacionDescatalogacion() throws Exception {
 		sc.nextLine();
 		String codObra, tituloObra, autorObra, editorialObra, opcion;
@@ -536,7 +565,9 @@ public class App {
 	 * 2. rexistroLectores: Imprime un desglose da listaxe de lectores na pantalla da información rexistrada no primeiro método
 	 * 3. importarExportarCatalogo: Permite a creacion de novos rexistros na listaxe de forma masiva e exportalos en formato JSON
 	 */
-	
+	/**Permite a creacion de novos rexistros na listaxe de forma masiva e exportalos en formato JSON
+	 * @throws Exception
+	 */
 	private static void importarExportarLectores() throws Exception {
 		sc.nextLine();
 		String archivo="Lectores.json", opcion;
@@ -570,8 +601,6 @@ public class App {
 				            }
 
 				            JsonObject obj = elemento.getAsJsonObject();
-
-				            // 1. Validar que existan las 5 claves y no sean null
 				            if (!tieneCampoValido(obj, "codLector") ||
 				                !tieneCampoValido(obj, "dniLector") ||
 				                !tieneCampoValido(obj, "nombreLector") ||
@@ -586,15 +615,11 @@ public class App {
 				            String dniLector = obj.get("dniLector").getAsString().trim();
 				            String nombreLector = obj.get("nombreLector").getAsString().trim();
 				            String apellidosLector = obj.get("apellidosLector").getAsString().trim();
-
-				            // 2. Validar que los textos no estén en blanco
 				            if (codLector.isBlank() || dniLector.isBlank() || nombreLector.isBlank() || apellidosLector.isBlank()) {
 				                System.out.println("Campos de texto en blanco en el registro: " + obj);
 				                rechazados++;
 				                continue;
 				            }
-
-				            // 3. Parsear edadLector de forma segura
 				            int edadLector;
 				            try {
 				                edadLector = Integer.parseInt(obj.get("edadLector").getAsString().trim());
@@ -608,8 +633,6 @@ public class App {
 				                rechazados++;
 				                continue;
 				            }
-
-				            // 4. Insertar en BD controlando duplicados de Primary Key
 				            try {
 				                pstmt.setString(1, codLector);
 				                pstmt.setString(2, dniLector);
@@ -665,7 +688,9 @@ public class App {
 		}
 		
 	}
-
+	/**Imprime un desglose da listaxe de lectores na pantalla da información rexistrada no primeiro método
+	 * @throws Exception
+	 */
 	private static void rexistroLectores() throws Exception {
 		Statement buscar = conexion.createStatement();
 		ResultSet resultado = buscar.executeQuery("SELECT * FROM Lectores ORDER BY codObra");
@@ -682,7 +707,11 @@ public class App {
 			System.out.printf("%-5s %-5s %-5s %-7s %-7s", codLector, dniLector, nombreLector, apellidosLector, edadLector);
 		}
 	}
-
+	/**Permite dar de alta novos usuarios e dalos de baixa
+	 * @throws Exception
+	 * @throws NotRegisteredException Error interno na táboa, non se rexistrou o lector
+	 * @throws UndestroyException Non se pode borrar debido a relacións existentes
+	 */
 	private static void altaBaixaLectores() throws Exception {
 		sc.nextLine();
 		String codLector, dniLector, nombreLector, apellidosLector, opcion;
@@ -786,13 +815,22 @@ public class App {
 	 * de datos están ben construídas 5. limpiarTexto: Permite evitar texto nú,
 	 * puntos, comas e outros dentro dos campos de texto
 	 */
-
+	
+	/**Restaura dende copia de seguridade en formato BIN
+	 * 
+	 */
 	private static void restaurarConCopia() {
 	}
-
+	/**Crea unha copia de seguridade en formato BIN
+	 * 
+	 */
 	private static void novoCopiaSeguridade() {
 	}
-
+	/**Revisa se un libro está dispoñible para emprésito
+	 * @param codObra
+	 * @return True se a obra está dispoñible e false se non o está
+	 * @throws Exception
+	 */
 	private static boolean disponibleLibro(String codObra) throws Exception {
 		String comprobar = """
 				SELECT disponibleObra FROM Catalogo WHERE codObra = ?
@@ -808,6 +846,11 @@ public class App {
 		}
 		return status;
 	}
+	/**Comproba se un lector ten libros asinados ao seu usuario
+	 * @param codLector
+	 * @return Devolve true se o lector comprobado ten libros asinados ao seu usuario e false se non os ten
+	 * @throws Exception
+	 */
 	private static boolean lectorConPrestamo(String codLector) throws Exception{
 		boolean status = false;
 	    String comprobar = """
@@ -821,6 +864,11 @@ public class App {
 	    }
 	    return status;
 	}
+	/**Comproba que o libro existe e está rexistrado na táboa de catálogo
+	 * @param codObra
+	 * @return True se o libro está rexistrado e false se non o está
+	 * @throws Exception
+	 */
 	private static boolean existeLibro(String codObra) throws Exception {
 
 		String comprobar = """
@@ -831,6 +879,11 @@ public class App {
 		ResultSet rs = codigo.executeQuery();
 		return rs.next();
 	}
+	/**Comproba que o lector existe e está rexistrado na táboa de lectores
+	 * @param codLector
+	 * @return True se o lector está rexistrado e false se non o está
+	 * @throws Exception
+	 */
 	private static boolean existeLector(String codLector) throws Exception{
 	String comprobar = """
 			SELECT 1 FROM Lectores WHERE codLector = ? LIMIT 1
@@ -840,6 +893,10 @@ public class App {
 	ResultSet rs = codigo.executeQuery();
 	return rs.next();
 	}
+	/**Comproba a integridade da base de datos
+	 * @param conexion
+	 * @throws Exception
+	 */
 	private static void database_check(Connection conexion) throws Exception {
 		Statement sentencia = conexion.createStatement();
 		try {
@@ -881,12 +938,20 @@ public class App {
 		}
 
 	}
+	/**Limpeza do texto no metodo de importarExportarCatalogo
+	 * @param texto
+	 * @return Limpeza do texto no metodo de importarExportarCatalogo
+	 */
 	private static String limpiarTexto(String texto) {
 		if (texto == null)
 			return "";
 		return texto.replace(";", ",").trim();
 	}
-	
+	/**Revisión de campos do arquivo JSON
+	 * @param obj
+	 * @param clave
+	 * @return Validez dos cambos obxecto
+	 */
 	private static boolean tieneCampoValido(JsonObject obj, String clave) {
 	    return obj.has(clave) && !obj.get(clave).isJsonNull() && obj.get(clave).isJsonPrimitive();
 	}
