@@ -2,6 +2,8 @@ package com.acarballeira.jdbc_sqlite.xestorBiblioteca;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -13,6 +15,7 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Scanner;
 import java.time.LocalDate;
+import com.google.gson.*;
 import com.acarballeira.jdbc_sqlite.xestorBiblioteca.exceptions.*;
 
 public class App {
@@ -143,6 +146,7 @@ public class App {
 					+ today + "\n" + "=============================================================================\n");
 			escritor.write(String.format("%-5s %-5s %-5s %-7s %-7s", "Rexistro", "Código Lector", "Código Libro",
 					"Data de Préstamo", "Data de Devolución"));
+			escritor.newLine();
 
 			while (resultado.next()) {
 				int codOperacion = resultado.getInt("codOperacion");
@@ -151,6 +155,7 @@ public class App {
 						fechaDevolucion = resultado.getString("fechaDevolucion");
 				escritor.write(String.format("%-5s %-5s %-5s %-7s %-7s", codOperacion, codLector, codObra,
 						fechaPrestamo, fechaDevolucion));
+				escritor.newLine();
 			}
 
 		} catch (Exception e) {
@@ -533,7 +538,131 @@ public class App {
 	 */
 	
 	private static void importarExportarLectores() throws Exception {
+		sc.nextLine();
+		String archivo="Lectores.json", opcion;
+		System.out.print("Importar ou Exportar: "); opcion=sc.nextLine();
 		
+		switch(opcion) {
+		//IMPORTAR
+		case "Importar":
+			String sqlImportar = """
+					INSERT INTO Lectores (codLector, dniLector, nombreLector, apellidosLector, edadLector) VALUES (?, ?, ?, ?, ?)
+					""";
+			int insertados=0, rechazados=0;
+			try{
+				File documento = new File(archivo);
+			    if (!documento.exists()) {
+			    	throw new FileNotFoundException("Non se atopou o arquivo");
+			    }
+			    try (FileReader reader = new FileReader(archivo);
+				         PreparedStatement pstmt = conexion.prepareStatement(sqlImportar)) {
+
+				        JsonElement raiz = JsonParser.parseReader(reader);
+				        if (!raiz.isJsonArray()) {
+				            throw new IncorrectFormatException("Ilexible, formato incorrecto");
+				        }
+
+				        JsonArray arrayLectores = raiz.getAsJsonArray();
+
+				        for (JsonElement elemento : arrayLectores) {
+				            if (!elemento.isJsonObject()) {
+				                throw new InvalidArgumentsException("Ilexible, elementos non válidos");
+				            }
+
+				            JsonObject obj = elemento.getAsJsonObject();
+
+				            // 1. Validar que existan las 5 claves y no sean null
+				            if (!tieneCampoValido(obj, "codLector") ||
+				                !tieneCampoValido(obj, "dniLector") ||
+				                !tieneCampoValido(obj, "nombreLector") ||
+				                !tieneCampoValido(obj, "apellidosLector") ||
+				                !tieneCampoValido(obj, "edadLector")) {
+				                System.out.println("Faltan datos obligatorios en el registro: " + obj);
+				                rechazados++;
+				                continue;
+				            }
+
+				            String codLector = obj.get("codLector").getAsString().trim();
+				            String dniLector = obj.get("dniLector").getAsString().trim();
+				            String nombreLector = obj.get("nombreLector").getAsString().trim();
+				            String apellidosLector = obj.get("apellidosLector").getAsString().trim();
+
+				            // 2. Validar que los textos no estén en blanco
+				            if (codLector.isBlank() || dniLector.isBlank() || nombreLector.isBlank() || apellidosLector.isBlank()) {
+				                System.out.println("Campos de texto en blanco en el registro: " + obj);
+				                rechazados++;
+				                continue;
+				            }
+
+				            // 3. Parsear edadLector de forma segura
+				            int edadLector;
+				            try {
+				                edadLector = Integer.parseInt(obj.get("edadLector").getAsString().trim());
+				                if (edadLector <= 0 || edadLector > 120) {
+				                    System.out.println("Edad fuera de rango (" + edadLector + ") en: " + codLector);
+				                    rechazados++;
+				                    continue;
+				                }
+				            } catch (NumberFormatException | UnsupportedOperationException e) {
+				                System.out.println("Formato numérico incorrecto en edadLector: " + obj);
+				                rechazados++;
+				                continue;
+				            }
+
+				            // 4. Insertar en BD controlando duplicados de Primary Key
+				            try {
+				                pstmt.setString(1, codLector);
+				                pstmt.setString(2, dniLector);
+				                pstmt.setString(3, nombreLector);
+				                pstmt.setString(4, apellidosLector);
+				                pstmt.setInt(5, edadLector);
+				                pstmt.executeUpdate();
+				                insertados++;
+				            } catch (SQLException e) {
+				                if (e.getErrorCode() == 19 || e.getMessage().toLowerCase().contains("unique")
+				                    || e.getMessage().toLowerCase().contains("primary key")) {
+				                    System.out.println("Registro duplicado (codLector ya existe): " + codLector);
+				                } else {
+				                    System.out.println("Error SQL al insertar " + codLector + ": " + e.getMessage());
+				                }
+				                rechazados++;
+				            }
+				        }
+
+				        System.out.println("Importación finalizada -> Insertados: " + insertados + " | Rechazados: " + rechazados);
+			    }
+		    } catch(Exception e){
+				System.out.println("error!: " + e.getMessage());
+		    }
+			break;
+		//EXPORTAR	
+		case "Exportar":
+			String sqlExportar = "SELECT codLector, dniLector, nombreLector, apellidosLector, edadLector FROM Lectores";
+		    JsonArray arrayLectores = new JsonArray();
+
+		    try (Statement stmt = conexion.createStatement();
+		         ResultSet rs = stmt.executeQuery(sqlExportar)) {
+
+		        while (rs.next()) {
+		            JsonObject obj = new JsonObject();
+		            obj.addProperty("codLector", rs.getString("codLector"));
+		            obj.addProperty("dniLector", rs.getString("dniLector"));
+		            obj.addProperty("nombreLector", rs.getString("nombreLector"));
+		            obj.addProperty("apellidosLector", rs.getString("apellidosLector"));
+		            obj.addProperty("edadLector", rs.getInt("edadLector"));
+
+		            arrayLectores.add(obj);
+		        }
+		    }
+
+		    Gson gson = new GsonBuilder().setPrettyPrinting().create();
+		    try (FileWriter writer = new FileWriter(archivo)) {
+		        gson.toJson(arrayLectores, writer);
+		    }
+
+		    System.out.println("Exportouse con éxito!");
+			break;
+		}
 		
 	}
 
@@ -756,5 +885,9 @@ public class App {
 		if (texto == null)
 			return "";
 		return texto.replace(";", ",").trim();
+	}
+	
+	private static boolean tieneCampoValido(JsonObject obj, String clave) {
+	    return obj.has(clave) && !obj.get(clave).isJsonNull() && obj.get(clave).isJsonPrimitive();
 	}
 }
